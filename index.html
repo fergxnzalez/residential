@@ -233,7 +233,7 @@
   // refuse to repaint a paused video when you seek it, so a video would look frozen there.
   const portrait = matchMedia('(max-aspect-ratio: 1/1)').matches;
   const SRC = 'media/tour-desktop.mp4';
-  const SEQ = { count: 295, fps: 10, url: i => `media/mobile/f_${String(i + 1).padStart(3, '0')}.jpg` };
+  const SEQ = { count: 443, fps: 15, url: i => `media/mobile/f_${String(i + 1).padStart(3, '0')}.jpg` };
   const canvas = document.getElementById('seq');
   const ctx = canvas.getContext('2d');
   const frames = [];
@@ -246,17 +246,31 @@
     canvas.height = Math.round(innerHeight * dpr);
     lastDrawn = -1;
   }
-  function drawFrame(i) {
+  function frameImg(i) {
     let img = frames[i];
-    if (!img || !img.complete || !img.naturalWidth) {        // fall back to the nearest loaded frame
-      for (let d = 1; d < 20 && !(img && img.naturalWidth); d++) img = frames[i - d] || frames[i + d];
-      if (!img || !img.naturalWidth) return;
-    }
+    for (let d = 1; d < 20 && !(img && img.complete && img.naturalWidth); d++) img = frames[i - d] || frames[i + d];
+    return img && img.naturalWidth ? img : null;
+  }
+  function paint(img, alpha) {
     const cw = canvas.width, ch = canvas.height;
     const s = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);  // object-fit: cover
     const w = img.naturalWidth * s, h = img.naturalHeight * s;
+    ctx.globalAlpha = alpha;
     ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
-    lastDrawn = i;
+  }
+  // Draws a fractional frame: the frame before, with the next one blended on top.
+  // This hides the step between frames, so slow finger scrolling still looks continuous.
+  function drawFrame(pos) {
+    const i = Math.floor(pos), t = pos - i;
+    const a = frameImg(i);
+    if (!a) return;
+    paint(a, 1);
+    if (t > 0.02 && i + 1 < SEQ.count) {
+      const b = frameImg(i + 1);
+      if (b && b !== a) paint(b, t);
+    }
+    ctx.globalAlpha = 1;
+    lastDrawn = pos;
   }
 
   // Scroll progress -> video time, piecewise so each caption lines up with its room
@@ -279,8 +293,8 @@
     if (Math.abs(target - current) < 0.0002) current = target;
     bar.style.width = (current * 100).toFixed(2) + '%';
     if (ready && portrait) {
-      const f = Math.min(SEQ.count - 1, Math.round(timeFor(current) * SEQ.fps));
-      if (f !== lastDrawn) drawFrame(f);
+      const pos = Math.min(SEQ.count - 1, timeFor(current) * SEQ.fps);
+      if (Math.abs(pos - lastDrawn) > 0.01) drawFrame(pos);
     } else if (ready && !video.seeking) {
       const dur = isFinite(video.duration) && video.duration > 0 ? video.duration : KEYS[KEYS.length - 1];
       const t = Math.min(timeFor(current), dur - 0.04);
@@ -317,7 +331,7 @@
     target = current = progress();
   }
 
-  // Phones: preload every frame (about 7 MB in total) before starting
+  // Phones: preload every frame (about 9 MB in total) before starting
   async function loadSequence() {
     const loadBar = document.getElementById('loadBar');
     sizeCanvas();
