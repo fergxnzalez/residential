@@ -232,8 +232,8 @@
   // Phones (portrait screens) use an image sequence drawn on a canvas: mobile browsers often
   // refuse to repaint a paused video when you seek it, so a video would look frozen there.
   const portrait = matchMedia('(max-aspect-ratio: 1/1)').matches;
-  const SRC = 'media/tour-desktop.mp4';
-  const SEQ = { count: 409, fps: 15, url: i => `media/mobile/f_${String(i + 1).padStart(3, '0')}.jpg` };
+  const SRC = 'media/tour-desktop-v3.mp4';
+  const SEQ = { count: 409, fps: 15, url: i => `media/mobile-v3/f_${String(i + 1).padStart(3, '0')}.jpg` };
   const canvas = document.getElementById('seq');
   const ctx = canvas.getContext('2d');
   const frames = [];
