@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marina Sky Residence · Dubai Marina</title>
+<meta name="description" content="Walk through Marina Sky Residence, a three-bedroom luxury apartment on the 42nd floor of Dubai Marina.">
+<meta property="og:title" content="Marina Sky Residence · Dubai Marina">
+<meta property="og:description" content="A three-bedroom luxury apartment with skyline views. Scroll to walk through it.">
+<meta property="og:image" content="media/poster-desktop.jpg">
+<meta name="theme-color" content="#14110e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #f7f2ea;
+    --muted: #d9cfc0;
+    --gold: #d8b77a;
+    --deep: #14110e;
+    --glass: rgba(20, 17, 14, .42);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--deep); color: var(--ink); font-family: Manrope, system-ui, sans-serif; }
+  body.locked { overflow: hidden; }
+
+  .stage { position: fixed; inset: 0; z-index: 0; background: #1b1713 url(media/poster-desktop.jpg) center / cover no-repeat; }
+  .stage video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .6s; }
+  .stage video.ready { opacity: 1; }
+  .shade { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      linear-gradient(to bottom, rgba(10,8,6,.55) 0%, transparent 18%, transparent 58%, rgba(10,8,6,.7) 100%),
+      linear-gradient(to right, rgba(10,8,6,.35), transparent 45%); }
+
+  header {
+    position: fixed; z-index: 10; inset: 0 0 auto 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px clamp(18px, 4vw, 56px);
+  }
+  .logo { font-family: "Cormorant Garamond", serif; font-size: 1.35rem; letter-spacing: .32em; text-transform: uppercase; }
+  .logo span { color: var(--gold); }
+  .btn {
+    font: 600 .82rem Manrope, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--deep); background: var(--gold); border: 0; border-radius: 999px;
+    padding: 12px 22px; cursor: pointer; text-decoration: none;
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid rgba(247,242,234,.45); }
+
+  /* Room indicator */
+  .rooms {
+    position: fixed; z-index: 10; right: clamp(14px, 3vw, 40px); top: 50%; transform: translateY(-50%);
+    display: grid; gap: 14px; list-style: none; margin: 0; padding: 0;
+  }
+  .rooms a { display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    color: var(--muted); text-decoration: none; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; }
+  .rooms a span { opacity: 0; transform: translateX(6px); transition: .3s; }
+  .rooms a::after { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--ink); transition: .3s; }
+  .rooms a.on { color: var(--ink); }
+  .rooms a.on span, .rooms a:hover span { opacity: 1; transform: none; }
+  .rooms a.on::after { background: var(--gold); border-color: var(--gold); transform: scale(1.25); }
+
+  main { position: relative; z-index: 5; }
+  section { min-height: 100vh; display: flex; align-items: flex-end; padding: 0 clamp(18px, 6vw, 96px) 14vh; }
+  section.hero { align-items: center; padding-bottom: 0; }
+  .copy { max-width: 520px; opacity: 0; transform: translateY(24px); transition: opacity .8s, transform .8s; }
+  section.on .copy { opacity: 1; transform: none; }
+  .eyebrow { color: var(--gold); font-size: .74rem; letter-spacing: .28em; text-transform: uppercase; font-weight: 600; }
+  h1, h2 { font-family: "Cormorant Garamond", serif; font-weight: 500; line-height: 1.02; margin: .35em 0 .3em; }
+  h1 { font-size: clamp(2.8rem, 7vw, 5.6rem); }
+  h2 { font-size: clamp(2.1rem, 4.6vw, 3.6rem); }
+  .copy p { color: var(--muted); font-size: 1.02rem; line-height: 1.65; margin: 0; max-width: 44ch; }
+  .facts { display: flex; gap: 28px; margin-top: 22px; flex-wrap: wrap; }
+  .facts div { font-size: .78rem; color: var(--muted); letter-spacing: .06em; }
+  .facts b { display: block; font-family: "Cormorant Garamond", serif; font-size: 1.7rem; font-weight: 500; color: var(--ink); letter-spacing: 0; }
+  .scroll-cue { margin-top: 34px; font-size: .72rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 12px; }
+  .scroll-cue i { width: 1px; height: 38px; background: linear-gradient(var(--gold), transparent); display: inline-block; }
+  .price { font-family: "Cormorant Garamond", serif; font-size: clamp(2.2rem, 5vw, 3.4rem); margin: 6px 0 4px; }
+  .actions { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+
+  .progress { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.12); }
+  .progress i { display: block; height: 100%; width: 0; background: var(--gold); }
+  .badge { position: fixed; z-index: 10; left: clamp(18px, 4vw, 56px); bottom: 18px; font-size: .68rem; color: rgba(247,242,234,.55); letter-spacing: .08em; }
+
+  .loader { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--deep); transition: opacity .7s, visibility .7s; }
+  .loader.done { opacity: 0; visibility: hidden; }
+  .loader div { text-align: center; }
+  .loader .logo { display: block; margin-bottom: 22px; }
+  .loader .bar { width: 200px; height: 1px; background: rgba(255,255,255,.15); margin: 0 auto; }
+  .loader .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .2s; }
+  .loader small { display: block; margin-top: 12px; color: var(--muted); font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; }
+
+  dialog { border: 0; border-radius: 18px; padding: 28px; width: min(420px, 92vw); background: #1d1915; color: var(--ink); }
+  dialog::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(4px); }
+  dialog h3 { font-family: "Cormorant Garamond", serif; font-weight: 500; font-size: 2rem; margin: 0 0 14px; }
+  dialog label { display: block; font-size: .78rem; color: var(--muted); margin: 12px 0 4px; letter-spacing: .04em; }
+  dialog input { width: 100%; font: inherit; color: var(--ink); background: #2a251f; border: 1px solid #3a332b; border-radius: 10px; padding: 11px 12px; }
+  dialog input:user-invalid { border-color: #d77a6a; }
+  dialog .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .thanks { display: none; color: var(--muted); }
+
+  @media (max-aspect-ratio: 1/1) { .stage { background-image: url(media/poster-mobile.jpg); } }
+  .copy { text-shadow: 0 1px 18px rgba(10,8,6,.55); }
+  @media (max-width: 700px) {
+    .shade { background: linear-gradient(to bottom, rgba(10,8,6,.55) 0%, rgba(10,8,6,.15) 22%, rgba(10,8,6,.45) 50%, rgba(10,8,6,.82) 100%); }
+    section.hero { align-items: flex-end; padding-bottom: 14vh; }
+    .rooms { display: none; }
+    section { padding-bottom: 16vh; }
+    header .btn { padding: 10px 16px; font-size: .72rem; }
+    .logo { font-size: 1.05rem; letter-spacing: .24em; }
+  }
+  @media (prefers-reduced-motion: reduce) { .copy { transition: none; } }
+</style>
+</head>
+<body class="locked">
+<div class="stage"><video id="tour" muted playsinline preload="auto" aria-hidden="true"></video></div>
+<div class="shade"></div>
+
+<header>
+  <div class="logo">Marina <span>Sky</span></div>
+  <button class="btn" type="button" data-open-visit>Book a viewing</button>
+</header>
+
+<ul class="rooms" id="rooms">
+  <li><a href="#welcome"><span>Welcome</span></a></li>
+  <li><a href="#living"><span>Living</span></a></li>
+  <li><a href="#kitchen"><span>Kitchen</span></a></li>
+  <li><a href="#gallery"><span>Gallery</span></a></li>
+  <li><a href="#bedroom"><span>Bedroom</span></a></li>
+  <li><a href="#viewing"><span>Viewing</span></a></li>
+</ul>
+
+<main>
+  <section class="hero" id="welcome">
+    <div class="copy">
+      <div class="eyebrow">Dubai Marina · 42nd floor</div>
+      <h1>Marina Sky Residence</h1>
+      <p>A three-bedroom apartment where light from the Gulf pours through every window. Walk through it from start to finish without leaving home.</p>
+      <div class="facts">
+        <div><b>3,068 sq ft</b>Built area</div>
+        <div><b>3</b>Bedrooms</div>
+        <div><b>42nd</b>Floor</div>
+      </div>
+      <div class="scroll-cue"><i></i>Scroll to step inside</div>
+    </div>
+  </section>
+
+  <section id="living">
+    <div class="copy">
+      <div class="eyebrow">Living room · 689 sq ft</div>
+      <h2>The skyline, front and centre</h2>
+      <p>Floor-to-ceiling windows, travertine floors and a terrace that opens onto the towers of Dubai Marina.</p>
+    </div>
+  </section>
+
+  <section id="kitchen">
+    <div class="copy">
+      <div class="eyebrow">Open kitchen</div>
+      <h2>Calacatta marble and oak</h2>
+      <p>A marble island, brass pendants and handleless cabinetry. Open to the living room, with views across the city.</p>
+    </div>
+  </section>
+
+  <section id="gallery">
+    <div class="copy">
+      <div class="eyebrow">Night gallery</div>
+      <h2>Quiet between rooms</h2>
+      <p>A limestone hallway with soft indirect light separates the living areas from the bedrooms.</p>
+    </div>
+  </section>
+
+  <section id="bedroom">
+    <div class="copy">
+      <div class="eyebrow">Master bedroom · 409 sq ft</div>
+      <h2>Wake up above the city</h2>
+      <p>A fluted-oak headboard, linen curtains and open views of Downtown Dubai.</p>
+    </div>
+  </section>
+
+  <section id="viewing">
+    <div class="copy">
+      <div class="eyebrow">Available now</div>
+      <div class="price">AED 8,950,000</div>
+      <p>Book a private viewing in person or by video call with our advisor, on the day and at the time that suits you.</p>
+      <div class="actions">
+        <button class="btn" type="button" data-open-visit>Book a viewing</button>
+        <button class="btn ghost" type="button" id="restart">Walk through again</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="progress"><i id="bar"></i></div>
+<div class="badge">Demo · AI-generated video</div>
+
+<div class="loader" id="loader"><div>
+  <span class="logo">Marina <span>Sky</span></span>
+  <div class="bar"><i id="loadBar"></i></div>
+  <small id="loadText">Preparing your tour</small>
+</div></div>
+
+<dialog id="visit" aria-labelledby="visit-title">
+  <form id="visitForm" novalidate>
+    <h3 id="visit-title">Book a viewing</h3>
+    <div id="fields">
+      <label for="vname">Full name</label>
+      <input id="vname" name="name" required autocomplete="name">
+      <label for="vmail">Email</label>
+      <input id="vmail" name="email" type="email" required autocomplete="email">
+      <label for="vphone">Phone</label>
+      <input id="vphone" name="phone" type="tel" autocomplete="tel">
+    </div>
+    <p class="thanks" id="thanks">Thank you. An advisor will contact you within 24 hours. (This is a demo: nothing has been sent.)</p>
+    <div class="row">
+      <button class="btn ghost" type="button" id="closeVisit">Close</button>
+      <button class="btn" type="submit" id="sendVisit">Send</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const video = document.getElementById('tour');
+  const sections = [...document.querySelectorAll('section')];
+  const links = [...document.querySelectorAll('#rooms a')];
+  const bar = document.getElementById('bar');
+
+  // Second of the video where each section stops (welcome, living, kitchen, gallery, bedroom, viewing)
+  const KEYS = [0, 6.5, 13, 16.5, 24, 29.4];
+
+  // Vertical screens get the portrait cut (lighter and framed for phones)
+  const portrait = matchMedia('(max-aspect-ratio: 1/1)').matches;
+  const SRC = portrait ? 'media/tour-mobile.mp4' : 'media/tour-desktop.mp4';
+  video.poster = portrait ? 'media/poster-mobile.jpg' : 'media/poster-desktop.jpg';
+
+  // Scroll progress -> video time, piecewise so each caption lines up with its room
+  function timeFor(p) {
+    const n = KEYS.length - 1;
+    const x = Math.min(Math.max(p, 0), 1) * n;
+    const i = Math.min(Math.floor(x), n - 1);
+    return KEYS[i] + (KEYS[i + 1] - KEYS[i]) * (x - i);
+  }
+  function progress() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    return max > 0 ? scrollY / max : 0;
+  }
+
+  let target = 0, current = 0, ready = false;
+  addEventListener('scroll', () => { target = progress(); }, { passive: true });
+
+  function tick() {
+    current += (target - current) * 0.1;
+    if (Math.abs(target - current) < 0.0002) current = target;
+    bar.style.width = (current * 100).toFixed(2) + '%';
+    if (ready && !video.seeking) {
+      const t = Math.min(timeFor(current), video.duration - 0.04);
+      if (Math.abs(video.currentTime - t) > 1 / 60) video.currentTime = t;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Active caption and dot
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      e.target.classList.toggle('on', e.isIntersecting);
+      if (e.isIntersecting) {
+        const i = sections.indexOf(e.target);
+        links.forEach((a, k) => a.classList.toggle('on', k === i));
+      }
+    });
+  }, { threshold: 0.5 });
+  sections.forEach(s => io.observe(s));
+
+  links.forEach((a, i) => a.addEventListener('click', e => {
+    e.preventDefault();
+    scrollTo({ top: sections[i].offsetTop, behavior: 'smooth' });
+  }));
+  document.getElementById('restart').addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+
+  // Download the whole video before starting so scrubbing never stalls
+  async function load() {
+    const loadBar = document.getElementById('loadBar');
+    try {
+      const res = await fetch(SRC);
+      if (!res.ok || !res.body) throw new Error('no stream');
+      const total = +res.headers.get('content-length') || (portrait ? 15000000 : 30000000);
+      const reader = res.body.getReader();
+      const chunks = []; let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); got += value.length;
+        loadBar.style.width = Math.min(100, got / total * 100) + '%';
+      }
+      video.src = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
+    } catch {
+      video.src = SRC;
+    }
+    await new Promise(r => {
+      if (video.readyState >= 2) return r();
+      video.addEventListener('loadeddata', r, { once: true });
+      setTimeout(r, 8000);
+    });
+    video.pause();
+    ready = true;
+    video.classList.add('ready');
+    document.getElementById('loader').classList.add('done');
+    document.body.classList.remove('locked');
+    target = current = progress();
+  }
+
+  // Viewing request form (demo)
+  const dlg = document.getElementById('visit');
+  const form = document.getElementById('visitForm');
+  document.querySelectorAll('[data-open-visit]').forEach(b => b.addEventListener('click', () => {
+    form.reset();
+    document.getElementById('fields').style.display = '';
+    document.getElementById('thanks').style.display = 'none';
+    document.getElementById('sendVisit').style.display = '';
+    dlg.showModal();
+  }));
+  document.getElementById('closeVisit').addEventListener('click', () => dlg.close());
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    if (!form.checkValidity()) { form.querySelector(':invalid')?.focus(); return; }
+    document.getElementById('fields').style.display = 'none';
+    document.getElementById('thanks').style.display = 'block';
+    document.getElementById('sendVisit').style.display = 'none';
+  });
+
+  tick();
+  load();
+})();
+</script>
+</body>
+</html>
