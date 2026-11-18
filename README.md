@@ -4,7 +4,7 @@ A single-page website where scrolling moves the camera through a luxury apartmen
 
 - `index.html` – the whole site (HTML, CSS and JavaScript, no build step)
 - `media/tour-desktop.mp4` – 1920×1080 tour used on landscape screens
-- `media/tour-mobile.mp4` – 1080×1920 portrait cut used on phones
+- `media/mobile/` – portrait image sequence (10 fps) used on phones; mobile browsers often refuse to repaint a paused video while seeking, so phones draw these frames on a canvas instead
 - `media/poster-*.jpg` – first frame shown while the video loads
 
 The videos are encoded with a keyframe every 4–6 frames so the browser can seek smoothly as you scroll.
@@ -21,6 +21,12 @@ Replace the two MP4 files with the new walkthrough, keeping the same encoding se
 ffmpeg -i walkthrough.mp4 -an -c:v libx264 -preset slow -crf 19 -g 6 -keyint_min 6 -bf 0 -sc_threshold 0 -movflags +faststart -pix_fmt yuv420p media/tour-desktop.mp4
 ```
 
-Then adjust the `KEYS` array in `index.html` (the second at which each room's caption appears).
+For phones, regenerate the portrait frames (crop to 9:16 first if the shoot is landscape):
+
+```bash
+ffmpeg -i walkthrough.mp4 -vf "crop=ih*9/16:ih,fps=10,scale=608:1080:flags=lanczos" -q:v 5 media/mobile/f_%03d.jpg
+```
+
+and set `SEQ.count` in `index.html` to the number of frames. Then adjust the `KEYS` array in `index.html` (the second at which each room's caption appears).
 
 *Demo: the current video is AI-generated and the property is fictional.*

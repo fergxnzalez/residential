@@ -24,8 +24,8 @@
   body.locked { overflow: hidden; }
 
   .stage { position: fixed; inset: 0; z-index: 0; background: #1b1713 url(media/poster-desktop.jpg) center / cover no-repeat; }
-  .stage video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .6s; }
-  .stage video.ready { opacity: 1; }
+  .stage video, .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .6s; }
+  .stage video.ready, .stage canvas.ready { opacity: 1; }
   .shade { position: fixed; inset: 0; z-index: 1; pointer-events: none;
     background:
       linear-gradient(to bottom, rgba(10,8,6,.55) 0%, transparent 18%, transparent 58%, rgba(10,8,6,.7) 100%),
@@ -111,7 +111,10 @@
 </style>
 </head>
 <body class="locked">
-<div class="stage"><video id="tour" muted playsinline preload="auto" aria-hidden="true"></video></div>
+<div class="stage">
+  <video id="tour" muted playsinline preload="auto" aria-hidden="true"></video>
+  <canvas id="seq" aria-hidden="true"></canvas>
+</div>
 <div class="shade"></div>
 
 <header>
@@ -226,10 +229,35 @@
   // Second of the video where each section stops (welcome, living, kitchen, gallery, bedroom, viewing)
   const KEYS = [0, 6.5, 13, 16.5, 24, 29.4];
 
-  // Vertical screens get the portrait cut (lighter and framed for phones)
+  // Phones (portrait screens) use an image sequence drawn on a canvas: mobile browsers often
+  // refuse to repaint a paused video when you seek it, so a video would look frozen there.
   const portrait = matchMedia('(max-aspect-ratio: 1/1)').matches;
-  const SRC = portrait ? 'media/tour-mobile.mp4' : 'media/tour-desktop.mp4';
-  video.poster = portrait ? 'media/poster-mobile.jpg' : 'media/poster-desktop.jpg';
+  const SRC = 'media/tour-desktop.mp4';
+  const SEQ = { count: 295, fps: 10, url: i => `media/mobile/f_${String(i + 1).padStart(3, '0')}.jpg` };
+  const canvas = document.getElementById('seq');
+  const ctx = canvas.getContext('2d');
+  const frames = [];
+  let lastDrawn = -1;
+  if (portrait) video.remove(); else canvas.remove();
+
+  function sizeCanvas() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(innerWidth * dpr);
+    canvas.height = Math.round(innerHeight * dpr);
+    lastDrawn = -1;
+  }
+  function drawFrame(i) {
+    let img = frames[i];
+    if (!img || !img.complete || !img.naturalWidth) {        // fall back to the nearest loaded frame
+      for (let d = 1; d < 20 && !(img && img.naturalWidth); d++) img = frames[i - d] || frames[i + d];
+      if (!img || !img.naturalWidth) return;
+    }
+    const cw = canvas.width, ch = canvas.height;
+    const s = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);  // object-fit: cover
+    const w = img.naturalWidth * s, h = img.naturalHeight * s;
+    ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+    lastDrawn = i;
+  }
 
   // Scroll progress -> video time, piecewise so each caption lines up with its room
   function timeFor(p) {
@@ -250,9 +278,15 @@
     current += (target - current) * 0.1;
     if (Math.abs(target - current) < 0.0002) current = target;
     bar.style.width = (current * 100).toFixed(2) + '%';
-    if (ready && !video.seeking) {
-      const t = Math.min(timeFor(current), video.duration - 0.04);
-      if (Math.abs(video.currentTime - t) > 1 / 60) video.currentTime = t;
+    if (ready && portrait) {
+      const f = Math.min(SEQ.count - 1, Math.round(timeFor(current) * SEQ.fps));
+      if (f !== lastDrawn) drawFrame(f);
+    } else if (ready && !video.seeking) {
+      const dur = isFinite(video.duration) && video.duration > 0 ? video.duration : KEYS[KEYS.length - 1];
+      const t = Math.min(timeFor(current), dur - 0.04);
+      if (isFinite(t) && Math.abs(video.currentTime - t) > 1 / 60) {
+        try { video.currentTime = t; } catch {}
+      }
     }
     requestAnimationFrame(tick);
   }
@@ -275,13 +309,45 @@
   }));
   document.getElementById('restart').addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
 
-  // Download the whole video before starting so scrubbing never stalls
-  async function load() {
+  function reveal() {
+    ready = true;
+    (portrait ? canvas : video).classList.add('ready');
+    document.getElementById('loader').classList.add('done');
+    document.body.classList.remove('locked');
+    target = current = progress();
+  }
+
+  // Phones: preload every frame (about 7 MB in total) before starting
+  async function loadSequence() {
+    const loadBar = document.getElementById('loadBar');
+    sizeCanvas();
+    addEventListener('resize', sizeCanvas);
+    let done = 0;
+    await new Promise(resolve => {
+      for (let i = 0; i < SEQ.count; i++) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = img.onerror = () => {
+          done++;
+          loadBar.style.width = (done / SEQ.count * 100) + '%';
+          if (i === 0) drawFrame(0);
+          if (done === SEQ.count) resolve();
+        };
+        img.src = SEQ.url(i);
+        frames[i] = img;
+      }
+      setTimeout(resolve, 25000);   // never keep the visitor waiting forever
+    });
+    reveal();
+  }
+
+  // Computers: download the whole video before starting so scrubbing never stalls
+  async function loadVideo() {
     const loadBar = document.getElementById('loadBar');
     try {
       const res = await fetch(SRC);
       if (!res.ok || !res.body) throw new Error('no stream');
-      const total = +res.headers.get('content-length') || (portrait ? 15000000 : 30000000);
+      const total = +res.headers.get('content-length') || 25000000;
       const reader = res.body.getReader();
       const chunks = []; let got = 0;
       for (;;) {
@@ -299,13 +365,12 @@
       video.addEventListener('loadeddata', r, { once: true });
       setTimeout(r, 8000);
     });
+    // Safari only repaints seeks after the video has played once
+    try { await video.play(); } catch {}
     video.pause();
-    ready = true;
-    video.classList.add('ready');
-    document.getElementById('loader').classList.add('done');
-    document.body.classList.remove('locked');
-    target = current = progress();
+    reveal();
   }
+  const load = portrait ? loadSequence : loadVideo;
 
   // Viewing request form (demo)
   const dlg = document.getElementById('visit');
